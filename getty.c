@@ -61,8 +61,8 @@ void log_user()
 int main () 
 {
 
-        log_user();
-        printf("Saliendo\n");
+    log_user();
+    printf("Saliendo\n");
 
 
     return 0;
