@@ -63,14 +63,14 @@ int main() {
     }
 
     wait(&status); // Wait for the shell to exit
-    printf("Status received from shell in getty: %d (exit code: %d)\n", status, WEXITSTATUS(status)); // Debugging print
+    printf("status getty: %d\n", status);
 
     // Propagate the shutdown signal upwards if received
-    if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
-        printf("getty: Propagating shutdown signal upwards with exit code %d\n", EXIT_SHUTDOWN); // Debugging print
-        exit(EXIT_SHUTDOWN); // Exit with the shutdown code
+    if (status == 0) {
+        printf("hout");
+        exit(status);
     }
 
-    printf("getty: Exiting normally.\n");
-    return 0; // Normal exit if no shutdown was requested
+    // Normal exit if no shutdown was requested
+    return 0;
 }
