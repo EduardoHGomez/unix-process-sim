@@ -1,78 +1,79 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/wait.h>
+#include <signal.h>
 
-#define EXIT_SHUTDOWN 99 // Define the same shutdown exit code
+void handle_sigterm(int sig) {
+    exit(0);
+}
 
-// Function to handle user login
-void log_user() {
-    FILE *file = fopen("passwd.txt", "r");
+int log_user()
+{
+    FILE *file;
+    file = fopen("passwd.txt", "r");
     if (file == NULL) {
         printf("File can't be opened \n");
-        exit(1);
+        return 0;
     }
 
     char user[25];
     char password[25];
     int found = 0;
 
-    while (1) {
+    while (1)
+    {
         printf("User: ");
         scanf("%s", user);
-
         printf("Password: ");
         scanf("%s", password);
 
         rewind(file);
-        char buffer[256]; // Buffer for each line
-
-        while (fgets(buffer, sizeof(buffer), file)) {
-            buffer[strcspn(buffer, "\n")] = 0; // Remove newline character
-
+        char buffer[256];
+        while (fgets(buffer, sizeof(buffer), file)) 
+        {
+            buffer[strcspn(buffer, "\n")] = 0;
             char *file_user = strtok(buffer, ":");
             char *file_password = strtok(NULL, ":");
-
             if (strcmp(user, file_user) == 0 && strcmp(password, file_password) == 0) {
                 found = 1;
-                break; // Match found
+                break;
             }
         }
 
         if (found) {
             printf("Login successful!\n");
-            break;
+            fclose(file);
+            return 1;
         } else {
             printf("Invalid username or password. Please try again.\n");
+        }        
+    }
+}
+
+int main(int argc, char *argv[]) 
+{
+    signal(SIGTERM, handle_sigterm);
+
+    while (1) {
+        int n = log_user();
+        if (n == 1) {
+            int pid = fork();
+            if (pid == 0) {
+                char *ppid_str = argv[1];
+                execl("./sh", "sh", ppid_str,(char *)NULL);
+                perror("execl failed");
+                exit(1);
+            } else if (pid > 0) {
+                int status;
+                waitpid(pid, &status, 0);
+            } else {
+                perror("fork failed");
+                exit(1);
+            }
         }
     }
 
-    fclose(file);
-}
-
-int main() {
-    log_user();
-
-    // Execute the shell and capture its exit status
-    int status;
-    if (fork() == 0) {
-        execlp("./sh", "./sh", (char *)NULL);
-        perror("Failed to start shell");
-    }
-
-    wait(&status); // Wait for the shell to exit
-    sleep(1);
-
-    // Propagate the shutdown signal upwards if received
-    if (status == 25344) {
-        exit(EXIT_SHUTDOWN);
-    } else if (status == 3584) {
-        printf("status getty 1.0: %d\n", status);
-        scanf("%d", &status);
-        exit(0);
-    }
-
-    // Normal exit if no shutdown was requested
-    return 1;
+    return 0;
 }

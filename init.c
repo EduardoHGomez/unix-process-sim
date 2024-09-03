@@ -2,65 +2,86 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <sys/types.h>
 #include <signal.h>
+#include <string.h>
 
-int num_children = 6;
-int processes[6]; // Array to store PIDs of child processes
-#define EXIT_SHUTDOWN 99 // Define a special exit code for shutdown
+#define NUM_TERMINALS 6
 
-// Function to create getty process in xterm
-void create_getty(int index) {
+int child_pids[NUM_TERMINALS];
+
+void handle_shutdown(int sig) {
+    printf("init: Initiating shutdown...\n");
+    fflush(stdout);
+    for (int i = 0; i < NUM_TERMINALS; i++) {
+        if (child_pids[i] > 0) {
+            printf("init: Sending SIGTERM to child PID %d\n", child_pids[i]);
+            fflush(stdout);
+            kill(child_pids[i], SIGTERM);
+        }
+    }
+    
+    printf("init: Waiting for all children to terminate...\n");
+    fflush(stdout);
+    while (wait(NULL) > 0);
+
+    printf("init: System shutdown complete.\n");
+    fflush(stdout);
+    exit(0);
+}
+
+void spawn_terminal(int index) {
     int pid = fork();
     if (pid == 0) {
-        // Create a new getty process
-        execlp("xterm", "xterm", "-e", "./getty", (char *)NULL);
-        perror("Failed to exec getty");
+        char ppid_str[20];
+        snprintf(ppid_str, sizeof(ppid_str), "%d", getppid());
+        printf("init: Spawning getty with PID: %d\n", getpid());
+        fflush(stdout);
+        execlp("xterm", "xterm", "-e", "./getty", ppid_str, (char *)NULL);
+        perror("init: execlp failed");
         exit(1);
     } else if (pid > 0) {
-        // Parent process: Store the child's PID in the array
-        processes[index] = pid;
+        child_pids[index] = pid;
+        printf("init: Spawned getty with PID: %d\n", pid);
+        fflush(stdout);
     } else {
-        perror("Fork failed");
+        perror("init: fork failed");
+        exit(1);
     }
 }
 
 int main() {
-    // Create 6 getty processes
-    for (int i = 0; i < num_children; i++) {
-        create_getty(i);
-        sleep(1);
+    printf("init: Starting with PID: %d\n", getpid());
+    fflush(stdout);
+
+    if (signal(SIGUSR1, handle_shutdown) == SIG_ERR) {
+        perror("init: Failed to set SIGUSR1 handler");
+        exit(1);
     }
 
-    // Monitor the children to ensure they are always running
+    for (int i = 0; i < NUM_TERMINALS; i++) {
+        child_pids[i] = 0;
+    }
+
+    for (int i = 0; i < NUM_TERMINALS; i++) {
+        spawn_terminal(i);
+    }
+
     while (1) {
         int status;
-        int terminated_pid = wait(&status); // Capture the exit status of the child process
-        printf("status: %d", status);
-
-        // Check if the exit status indicates a shutdown
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 25344) {
-            printf("Shutdown requested. Terminating all processes...\n");
-
-            // Terminate all getty processes
-            for (int i = 0; i < num_children; i++) {
-                if (processes[i] > 0) { // Ensure the process exists before attempting to kill
-                    kill(processes[i], SIGKILL);
+        int terminated_pid = wait(&status);
+        if (terminated_pid > 0) {
+            printf("init: Child process %d terminated with status %d\n", terminated_pid, WEXITSTATUS(status));
+            fflush(stdout);
+            for (int i = 0; i < NUM_TERMINALS; i++) {
+                if (child_pids[i] == terminated_pid) {
+                    printf("init: Respawning terminal %d\n", i);
+                    fflush(stdout);
+                    spawn_terminal(i);
+                    break;
                 }
-            }
-            break; // Exit the loop and end the init process
-        }
-
-        // Restart the terminated process if it's not a shutdown
-        for (int i = 0; i < num_children; i++) {
-            if (terminated_pid == processes[i]) {
-                printf("Process %d terminated. Restarting...\n", terminated_pid);
-                create_getty(i); // Restart the terminated process
-                break;
             }
         }
     }
 
-    printf("All processes have been terminated. Exiting init.\n");
-    return 0; // Gracefully exit after shutdown
+    return 0;
 }
