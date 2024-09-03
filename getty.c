@@ -67,9 +67,10 @@ int main() {
 
     // Propagate the shutdown signal upwards if received
     if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
-        exit(25344); // Exit with the shutdown code
+        printf("getty: Propagating shutdown signal upwards with exit code %d\n", EXIT_SHUTDOWN); // Debugging print
+        exit(EXIT_SHUTDOWN); // Exit with the shutdown code
     }
 
-    // Normal exit if no shutdown was requested
-    return status;
+    printf("getty: Exiting normally.\n");
+    return 0; // Normal exit if no shutdown was requested
 }

@@ -1,68 +1,53 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <signal.h>
+#include <string.h>
 
-int num_children = 6;
-int processes[6]; // Array to store PIDs of child processes
-#define EXIT_SHUTDOWN 99 // Define a special exit code for shutdown
-
-// Function to create getty process in xterm
-void create_getty(int index) {
-    int pid = fork();
-    if (pid == 0) {
-        // Create a new getty process
-        execlp("xterm", "xterm", "-e", "./getty", (char *)NULL);
-        perror("Failed to exec getty");
-        exit(1);
-    } else if (pid > 0) {
-        // Parent process: Store the child's PID in the array
-        processes[index] = pid;
-    } else {
-        perror("Fork failed");
-    }
-}
+#define CMDLEN 128
+#define MAXPAR 16
+#define EXIT_SHUTDOWN 99 // Define the shutdown exit code
 
 int main() {
-    // Create 6 getty processes
-    for (int i = 0; i < num_children; i++) {
-        create_getty(i);
-        sleep(1);
-    }
+    int nextcmd = 1;
+    char command[CMDLEN];
+    int p;
+    char *cmdargs[MAXPAR];
+    int i;
 
-    // Monitor the children to ensure they are always running
-    while (1) {
-        int status;
-        int terminated_pid = wait(&status); // Capture the exit status of the child process
-        printf("Status received from getty in init: %d (exit code: %d)\n", status, WEXITSTATUS(status)); // Debugging print
-        printf("Here init");
-            scanf("%d", &status);
+    while (nextcmd) {
+        printf("Shell> ");
+        fgets(command, CMDLEN, stdin);
+        command[strcspn(command, "\n\r")] = 0;
 
-        // Check if the exit status indicates a shutdown
-        if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
-            printf("Shutdown requested. Terminating all processes...\n");
+        // Split the command into arguments
+        i = 0;
+        cmdargs[i] = strtok(command, " ");
 
-            // Terminate all getty processes
-            for (int i = 0; i < num_children; i++) {
-                if (processes[i] > 0) { // Ensure the process exists before attempting to kill
-                    kill(processes[i], SIGKILL);
-                }
-            }
-            break; // Exit the loop and end the init process
+        if (cmdargs[i] == 0)
+            continue;
+
+        while (cmdargs[i] != NULL) {
+            i++;
+            cmdargs[i] = strtok(NULL, " ");
         }
 
-        // Restart the terminated process if it's not a shutdown
-        for (int i = 0; i < num_children; i++) {
-            if (terminated_pid == processes[i]) {
-                printf("Process %d terminated. Restarting...\n", terminated_pid);
-                create_getty(i); // Restart the terminated process
-                break;
-            }
+        // Check if the shutdown command is issued
+        if (strcmp(command, "shutdown") == 0) {
+            printf("Shutting down... Exiting with code %d\n", EXIT_SHUTDOWN); // Debug: confirm exit code
+            exit(EXIT_SHUTDOWN); // Exit with the correct shutdown code (99)
+        }
+
+        // Execute other commands if not shutdown
+        if (strcmp(command, "exit") != 0) {
+            p = fork();
+            if (p == 0)
+                execvp(cmdargs[0], cmdargs);
+            wait(NULL);
+        } else {
+            nextcmd = 0;
         }
     }
 
-    printf("All processes have been terminated. Exiting init.\n");
-    return 0; // Gracefully exit after shutdown
+    printf("Exiting shell normally.\n");
+    return 0; // Normal exit if no shutdown
 }
