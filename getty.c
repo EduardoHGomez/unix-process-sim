@@ -1,25 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
+#define EXIT_SHUTDOWN 99 // Define the same shutdown exit code
 
-void log_user()
-{
-    // Todo lo relacionado con leer el archivo
-    FILE *file;
-    file = fopen("passwd.txt", "r");
-
+// Function to handle user login
+void log_user() {
+    FILE *file = fopen("passwd.txt", "r");
     if (file == NULL) {
         printf("File can't be opened \n");
+        exit(1);
     }
 
-    // User y Password
     char user[25];
     char password[25];
     int found = 0;
 
-    while (1)
-    {
+    while (1) {
         printf("User: ");
         scanf("%s", user);
 
@@ -27,43 +26,51 @@ void log_user()
         scanf("%s", password);
 
         rewind(file);
-        char buffer[256]; // Buffer de cada linea
+        char buffer[256]; // Buffer for each line
 
-        while (fgets(buffer, sizeof(buffer), file)) 
-        {
-            // Remove newline character if present
-            buffer[strcspn(buffer, "\n")] = 0;
+        while (fgets(buffer, sizeof(buffer), file)) {
+            buffer[strcspn(buffer, "\n")] = 0; // Remove newline character
 
-            // Split the line into username and password
             char *file_user = strtok(buffer, ":");
             char *file_password = strtok(NULL, ":");
 
-            // Check if both username and password match
             if (strcmp(user, file_user) == 0 && strcmp(password, file_password) == 0) {
                 found = 1;
                 break; // Match found
             }
         }
 
-            if (found) {
-                printf("Login successful!\n");
-                break;
-            } else {
-                printf("Invalid username or password. Please try again.\n");
-            }        
+        if (found) {
+            printf("Login successful!\n");
+            break;
+        } else {
+            printf("Invalid username or password. Please try again.\n");
+        }
     }
 
     fclose(file);
 }
 
-
-
-int main () 
-{
-
+int main() {
     log_user();
-    printf("Saliendo\n");
 
+    // Execute the shell and capture its exit status
+    int status;
+    if (fork() == 0) {
+        execlp("./sh", "./sh", (char *)NULL);
+        perror("Failed to start shell");
+        exit(1);
+    }
 
+    wait(&status); // Wait for the shell to exit
+    printf("status getty: %d\n", status);
+
+    // Propagate the shutdown signal upwards if received
+    if (status == 0) {
+        printf("hout");
+        exit(status);
+    }
+
+    // Normal exit if no shutdown was requested
     return 0;
 }

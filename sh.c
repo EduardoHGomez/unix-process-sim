@@ -4,51 +4,54 @@
 #include <string.h>
 #include <sys/wait.h>
 
-
 #define CMDLEN 128
 #define MAXPAR 16
+#define EXIT_SHUTDOWN 99 // Define the shutdown exit code
 
-
-int main()
-{
+int main() {
     int nextcmd = 1;
     char command[CMDLEN];
     int p;
     char *cmdargs[MAXPAR];
     int i;
+    int result;
 
-
-    while(nextcmd)
-    {
-        printf("Shell>");
+    while (nextcmd) {
+        printf("Shell> ");
         fgets(command, CMDLEN, stdin);
-        command[strcspn(command,"\n\r")] = 0;
+        command[strcspn(command, "\n\r")] = 0;
 
+        // Split the command into arguments
+        i = 0;
+        cmdargs[i] = strtok(command, " ");
 
-        // Separar cada una de las cadenas de command para ponerlas en el arreglo de apuntadores
-        i=0;
-        cmdargs[i] = strtok(command," ");  // El token separador es el espacio
-
-
-        if(cmdargs[i]==0)
+        if (cmdargs[i] == 0)
             continue;
 
-
-        while(cmdargs[i]!=NULL)
-        {
+        while (cmdargs[i] != NULL) {
             i++;
-            cmdargs[i] = strtok(NULL," ");
+            cmdargs[i] = strtok(NULL, " ");
         }
 
-
-        if(strcmp(command,"exit")!=0)
-        {
-            p = fork();
-            if(p==0)
-                execvp(cmdargs[0],cmdargs);
-            wait(NULL);
-        }
-        else
+        // Check if the shutdown command is issued
+        if (strcmp(command, "shutdown") == 0) {
+            printf("Shutting down...\n");
             nextcmd = 0;
+            result = 99;
+            exit(1);
+        }
+
+        // Execute other commands if not shutdown
+        if (strcmp(command, "exit") != 0) {
+            p = fork();
+            if (p == 0)
+                execvp(cmdargs[0], cmdargs);
+            wait(NULL);
+        } else {
+            nextcmd = 0;
+            result = 1;
+        }
     }
+
+    return result;
 }
