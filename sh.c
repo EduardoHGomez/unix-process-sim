@@ -37,8 +37,7 @@ int main() {
         if (strcmp(command, "shutdown") == 0) {
             printf("Shutting down...\n");
             nextcmd = 0;
-            result = 99;
-            exit(1);
+            exit(EXIT_SHUTDOWN);
         }
 
         // Execute other commands if not shutdown
@@ -49,9 +48,9 @@ int main() {
             wait(NULL);
         } else {
             nextcmd = 0;
-            result = 1;
+            exit(0);
         }
     }
 
-    return result;
+    return 0;
 }

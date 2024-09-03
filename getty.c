@@ -59,18 +59,20 @@ int main() {
     if (fork() == 0) {
         execlp("./sh", "./sh", (char *)NULL);
         perror("Failed to start shell");
-        exit(1);
     }
 
     wait(&status); // Wait for the shell to exit
-    printf("status getty: %d\n", status);
+    sleep(1);
 
     // Propagate the shutdown signal upwards if received
-    if (status == 0) {
-        printf("hout");
-        exit(status);
+    if (status == 25344) {
+        exit(EXIT_SHUTDOWN);
+    } else if (status == 3584) {
+        printf("status getty 1.0: %d\n", status);
+        scanf("%d", &status);
+        exit(0);
     }
 
     // Normal exit if no shutdown was requested
-    return 0;
+    return 1;
 }
