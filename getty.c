@@ -67,9 +67,9 @@ int main() {
 
     // Propagate the shutdown signal upwards if received
     if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
-        exit(EXIT_SHUTDOWN); // Exit with the shutdown code
+        exit(25344); // Exit with the shutdown code
     }
 
     // Normal exit if no shutdown was requested
-    return 0;
+    return status;
 }

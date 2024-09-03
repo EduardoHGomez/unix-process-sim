@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #define CMDLEN 128
 #define MAXPAR 16
@@ -35,7 +36,8 @@ int main() {
         if (strcmp(command, "shutdown") == 0) {
             printf("Shutting down...\n");
             nextcmd = 0;
-            exit(EXIT_SHUTDOWN); // Exit with the correct shutdown code (99)
+            scanf("%d", &nextcmd);
+            exit(99); // Exit with the correct shutdown code (99)
         }
 
         // Execute other commands if not shutdown

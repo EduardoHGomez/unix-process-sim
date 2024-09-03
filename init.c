@@ -37,6 +37,8 @@ int main() {
         int status;
         int terminated_pid = wait(&status); // Capture the exit status of the child process
         printf("Status received from getty in init: %d (exit code: %d)\n", status, WEXITSTATUS(status)); // Debugging print
+        printf("Here init");
+            scanf("%d", &status);
 
         // Check if the exit status indicates a shutdown
         if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
