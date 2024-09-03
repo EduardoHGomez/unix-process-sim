@@ -36,10 +36,10 @@ int main() {
     while (1) {
         int status;
         int terminated_pid = wait(&status); // Capture the exit status of the child process
-        printf("status: %d", status);
+        printf("Status received from getty in init: %d (exit code: %d)\n", status, WEXITSTATUS(status)); // Debugging print
 
         // Check if the exit status indicates a shutdown
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 25344) {
+        if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SHUTDOWN) {
             printf("Shutdown requested. Terminating all processes...\n");
 
             // Terminate all getty processes
